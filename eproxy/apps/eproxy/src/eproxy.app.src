@@ -1,0 +1,15 @@
+{application, eproxy,
+ [{description, "An OTP application"},
+  {vsn, "cat from VERSION"},
+  {registered, []},
+  {mod, {eproxy_app, []}},
+  {applications,
+   [kernel,
+    stdlib
+   ]},
+  {env,[]},
+  {modules, []},
+
+  {licenses, ["Apache 2.0"]},
+  {links, []}
+ ]}.

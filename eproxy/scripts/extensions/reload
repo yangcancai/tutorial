@@ -1,0 +1,10 @@
+#!/bin/bash
+
+case $1 in
+    help)
+        echo "bin/eproxy reload        execute eproxy_ctl:reload()"
+        ;;
+    *) ;;
+esac
+R=$(relx_nodetool eval 'eproxy_ctl:reload().')
+echo $R
