@@ -52,9 +52,15 @@ loop(S, #state{step = Step, remote = Remote, buffer = Buffer} = State) ->
         case parse_packet(Data, Buffer) of
              {done, NewBuffer}  ->
                  case check_packet(NewBuffer) of
+                   %% http 代理协议
                    {ok, Host, Port, NewPacket} ->
                      {ok, RemoteSocket} = gen_tcp:connect(Host, Port, [binary, {active, true}]),
                       ok = gen_tcp:send(RemoteSocket, NewPacket),
+                     loop(S, State#state{buffer = <<>>, step = connected, remote = RemoteSocket});
+                   %% https 代理协议
+                   {ok, Host, Port} ->
+                     {ok, RemoteSocket} = gen_tcp:connect(Host, Port, [binary, {active, true}]),
+                     ok = gen_tcp:send(S, <<"HTTP/1.1 200 OK\r\n\r\n">>),
                      loop(S, State#state{buffer = <<>>, step = connected, remote = RemoteSocket});
                    {error, _} ->
                       gen_tcp:close(S)
@@ -95,6 +101,8 @@ check_packet(<<"HEAD", _/binary>> = Buffer) ->
   do_parse_remote_info(Buffer);
 check_packet(<<"TRACE", _/binary>> = Buffer) ->
   do_parse_remote_info(Buffer);
+check_packet(<<"CONNECT", _/binary>> = Buffer) ->
+  do_parse_remote_info(Buffer);
 check_packet(_Buffer) ->
     {error, invalid_packet}.
 
@@ -107,6 +115,8 @@ do_parse_remote_info(Buffer) ->
           {ok, erlang:binary_to_list(Host), Port, new_packet([Method, Path | FirstLineRest], RestHeader, Body)};
         #{host := Host, path := Path, scheme := <<"http">>} ->
           {ok, erlang:binary_to_list(Host), 443, new_packet([Method, Path| FirstLineRest], RestHeader, Body)};
+        #{path := Port, scheme := Host} when Host /= <<"http">> ->
+          {ok, erlang:binary_to_list(Host), erlang:binary_to_integer(Port)};
         Other ->
           {error, {parse_remote_info_invalid, RemoteUrl, Other}}
     end.
