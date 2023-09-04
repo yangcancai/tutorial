@@ -31,8 +31,11 @@
 -export([start/2, stop/1]).
 
 start(_StartType, _StartArgs) ->
+    cool_tools_logger:start_default_log(true),
+    cool_tools_logger:set_global_loglevel(debug),
+    {ok, P} = eproxy_sup:start_link(),
     eproxy:start(),
-    eproxy_sup:start_link().
+    {ok, P}.
 
 stop(_State) ->
     ok.

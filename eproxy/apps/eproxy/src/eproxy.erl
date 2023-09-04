@@ -26,55 +26,10 @@
 
 -author("Cam").
 
--export([start/0]).
--record(state, {remote, step = handshake, buffer = <<>>}).
+-export([start/0, parse_packet/2, check_packet/1]).
 start() ->
   {ok, S} = gen_tcp:listen(12345, [binary, {packet, 0}, {active, false}]),
-  erlang:spawn(fun() -> start(S) end).
-start(Listen)  ->
-  {ok, S1} = gen_tcp:accept(Listen) ,
-  Pid = erlang:spawn(fun () ->
-        loop(S1, #state{})
-               end),
-  ok = gen_tcp:controlling_process(S1, Pid),
-  start(Listen).
-
-loop(S, #state{step = Step, remote = Remote, buffer = Buffer} = State) ->
-  ok = inet:setopts(S, [{active, once}]),
-  receive
-    {tcp, Remote, Data} ->
-       ok = gen_tcp:send(S, Data),
-      loop(S, State);
-    {tcp, S, Data} when Step /= handshake ->
-      ok = gen_tcp:send(Remote, Data),
-      loop(S, State);
-    {tcp, S, Data} ->
-        case parse_packet(Data, Buffer) of
-             {done, NewBuffer}  ->
-                 case check_packet(NewBuffer) of
-                   %% http 代理协议
-                   {ok, Host, Port, NewPacket} ->
-                     {ok, RemoteSocket} = gen_tcp:connect(Host, Port, [binary, {active, true}]),
-                      ok = gen_tcp:send(RemoteSocket, NewPacket),
-                     loop(S, State#state{buffer = <<>>, step = connected, remote = RemoteSocket});
-                   %% https 代理协议
-                   {ok, Host, Port} ->
-                     {ok, RemoteSocket} = gen_tcp:connect(Host, Port, [binary, {active, true}]),
-                     ok = gen_tcp:send(S, <<"HTTP/1.1 200 OK\r\n\r\n">>),
-                     loop(S, State#state{buffer = <<>>, step = connected, remote = RemoteSocket});
-                   {error, _} ->
-                      gen_tcp:close(S)
-                 end;
-          {more, NewBuffer} ->
-              loop(S, State#state{buffer = NewBuffer})
-        end;
-    {tcp_closed, Remote} ->
-      gen_tcp:close(S);
-    {tcp_closed, S} ->
-      gen_tcp:close(Remote),
-      io:format("socket closed : ~p ~n",[S])
-  end.
-
+  [supervisor:start_child(eproxy_accept_sup, [S]) || _N <- lists:seq(1, 100)].
 
 parse_packet(Data, Buffer) ->
   NewBuffer = <<Buffer/binary, Data/binary>>,
