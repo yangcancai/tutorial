@@ -24,9 +24,9 @@
 %%%===================================================================
 
 %% @doc Starts the supervisor
--spec(start_link() -> {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
+-spec start_link() -> {ok, Pid :: pid()} | ignore | {error, Reason :: term()}.
 start_link() ->
-  supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+    supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -37,26 +37,37 @@ start_link() ->
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
--spec(init(Args :: term()) ->
-  {ok, {SupFlags :: {RestartStrategy :: supervisor:strategy(),
-    MaxR :: non_neg_integer(), MaxT :: non_neg_integer()},
-    [ChildSpec :: supervisor:child_spec()]}}
-  | ignore | {error, Reason :: term()}).
+-spec init(Args :: term()) ->
+    {ok,
+        {
+            SupFlags :: {
+                RestartStrategy :: supervisor:strategy(),
+                MaxR :: non_neg_integer(),
+                MaxT :: non_neg_integer()
+            },
+            [ChildSpec :: supervisor:child_spec()]
+        }}
+    | ignore
+    | {error, Reason :: term()}.
 init([]) ->
-  MaxRestarts = 1000,
-  MaxSecondsBetweenRestarts = 3600,
-  SupFlags = #{strategy => simple_one_for_one,
-    intensity => MaxRestarts,
-    period => MaxSecondsBetweenRestarts},
+    MaxRestarts = 1000,
+    MaxSecondsBetweenRestarts = 3600,
+    SupFlags = #{
+        strategy => simple_one_for_one,
+        intensity => MaxRestarts,
+        period => MaxSecondsBetweenRestarts
+    },
 
-  AChild = #{id => 'eproxy_sessions',
-    start => {'eproxy_sessions', start_link, []},
-    restart => permanent,
-    shutdown => 2000,
-    type => worker,
-    modules => ['eproxy_sessions']},
+    AChild = #{
+        id => 'eproxy_sessions',
+        start => {'eproxy_sessions', start_link, []},
+        restart => permanent,
+        shutdown => 2000,
+        type => worker,
+        modules => ['eproxy_sessions']
+    },
 
-  {ok, {SupFlags, [AChild]}}.
+    {ok, {SupFlags, [AChild]}}.
 
 %%%===================================================================
 %%% Internal functions

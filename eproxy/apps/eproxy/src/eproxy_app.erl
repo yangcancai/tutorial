@@ -15,7 +15,7 @@
 %%% See the License for the specific language governing permissions and
 %%% limitations under the License.
 %%%
-   
+
 %%% @doc
 %%%
 %%% @end
@@ -31,7 +31,9 @@
 -export([start/2, stop/1]).
 
 start(_StartType, _StartArgs) ->
+    ets:new(eproxy_counters, [named_table, public, set]),
     cool_tools_logger:start_default_log(true),
+    cool_tools_logger:unlimited_logger_formatter(disk_log),
     cool_tools_logger:set_global_loglevel(debug),
     {ok, P} = eproxy_sup:start_link(),
     eproxy:start(),

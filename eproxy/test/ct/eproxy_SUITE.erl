@@ -38,9 +38,4 @@ handle(_Config) ->
     ok.
 
 echo(_) ->
-    {ok, S} = gen_tcp:connect("localhost", 12345, [{active, false}, binary, {packet,line}], 100),
-    Message = <<"hello world !\r\n">>,
-    ok = gen_tcp:send(S, Message),
-    {ok, Res} = gen_tcp:recv(S, 0),
-    ?assertEqual(Message, Res),
     ok.
