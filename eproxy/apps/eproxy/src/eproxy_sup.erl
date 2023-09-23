@@ -15,7 +15,7 @@
 %%% See the License for the specific language governing permissions and
 %%% limitations under the License.
 %%%
-   
+
 %%% @doc
 %%%
 %%% @end
@@ -47,10 +47,29 @@ start_link() ->
 %%                  type => worker(),       % optional
 %%                  modules => modules()}   % optional
 init([]) ->
-    SupFlags = #{strategy => one_for_all,
-                 intensity => 0,
-                 period => 1},
-    ChildSpecs = [],
+    SupFlags = #{
+        strategy => one_for_one,
+        intensity => 1,
+        period => 1
+    },
+    ChildSpecs = [
+        #{
+            id => eproxy_accept_sup,
+            start => {eproxy_accept_sup, start_link, []},
+            restart => permanent,
+            shutdown => 2000,
+            type => supervisor,
+            modules => [eproxy_accept_sup]
+        },
+        #{
+            id => eproxy_sessions_sup,
+            start => {eproxy_sessions_sup, start_link, []},
+            restart => permanent,
+            shutdown => 2000,
+            type => supervisor,
+            modules => [eproxy_sessions_sup]
+        }
+    ],
     {ok, {SupFlags, ChildSpecs}}.
 
 %% internal functions

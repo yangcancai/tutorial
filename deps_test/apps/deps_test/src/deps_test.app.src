@@ -1,0 +1,15 @@
+{application, deps_test,
+ [{description, "An OTP application"},
+  {vsn, "cat from VERSION"},
+  {registered, []},
+  {mod, {deps_test_app, []}},
+  {applications,
+   [kernel,
+    stdlib
+   ]},
+  {env,[]},
+  {modules, []},
+
+  {licenses, ["Apache 2.0"]},
+  {links, []}
+ ]}.

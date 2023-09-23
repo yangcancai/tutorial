@@ -5,7 +5,8 @@
   {mod, {eproxy_app, []}},
   {applications,
    [kernel,
-    stdlib
+    stdlib,
+    cool_tools
    ]},
   {env,[]},
   {modules, []},

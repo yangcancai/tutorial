@@ -1,0 +1,6 @@
+-name ${DEPS_TEST_NODE_NAME} 
+
+-setcookie ${DEPS_TEST_COOKIE} 
+
++K true
++A30

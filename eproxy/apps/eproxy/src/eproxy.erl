@@ -15,7 +15,7 @@
 %%% See the License for the specific language governing permissions and
 %%% limitations under the License.
 %%%
-   
+
 %%% @doc
 %%%
 %%% @end
@@ -26,25 +26,67 @@
 
 -author("Cam").
 
--export([start/0]).
-
+-export([start/0, parse_packet/2, check_packet/1]).
 start() ->
-  {ok, S} = gen_tcp:listen(12345, [binary, {packet,line}, {active, false}]),
-  erlang:spawn(fun() -> start(S) end).
-start(Listen)  ->
-  {ok, S1} = gen_tcp:accept(Listen) ,
-  Pid = erlang:spawn(fun () ->
-        loop(S1)
-               end),
-  ok = gen_tcp:controlling_process(S1, Pid),
-  ok.
+    {ok, S} = gen_tcp:listen(12345, [binary, {packet, 0}, {active, false}, {reuseaddr, true}]),
+    [supervisor:start_child(eproxy_accept_sup, [S]) || _N <- lists:seq(1, 100)].
 
-loop(S) ->
-  ok = inet:setopts(S, [{active, once}]),
-  receive
-    {tcp, S, Data}  ->
-      ok = gen_tcp:send(S, Data),
-      loop(S);
-    {tcp_closed, S} ->
-      io:format("socket closed : ~p ~n",[S])
-  end.
+parse_packet(Data, Buffer) ->
+    NewBuffer = <<Buffer/binary, Data/binary>>,
+    case binary:match(NewBuffer, <<"\r\n\r\n">>) of
+        nomatch ->
+            {more, NewBuffer};
+        _ ->
+            {done, NewBuffer}
+    end.
+
+-spec check_packet(Buffer :: binary()) ->
+    {ok, Host :: list(), Port :: integer(), NewBuffer :: binary()} | {error, tuple()}.
+check_packet(<<"GET", _/binary>> = Buffer) ->
+    do_parse_remote_info(Buffer);
+check_packet(<<"POST", _/binary>> = Buffer) ->
+    do_parse_remote_info(Buffer);
+check_packet(<<"PUT", _/binary>> = Buffer) ->
+    do_parse_remote_info(Buffer);
+check_packet(<<"DELETE", _/binary>> = Buffer) ->
+    do_parse_remote_info(Buffer);
+check_packet(<<"OPTIONS", _/binary>> = Buffer) ->
+    do_parse_remote_info(Buffer);
+check_packet(<<"HEAD", _/binary>> = Buffer) ->
+    do_parse_remote_info(Buffer);
+check_packet(<<"TRACE", _/binary>> = Buffer) ->
+    do_parse_remote_info(Buffer);
+check_packet(<<"CONNECT", _/binary>> = Buffer) ->
+    do_parse_remote_info(Buffer);
+check_packet(_Buffer) ->
+    {error, invalid_packet}.
+
+do_parse_remote_info(Buffer) ->
+    [Header, Body] = binary:split(Buffer, <<"\r\n\r\n">>),
+    [FirstLine | RestHeader] = binary:split(Header, <<"\r\n">>, [global]),
+    [Method, RemoteUrl | FirstLineRest] = binary:split(FirstLine, <<" ">>, [global]),
+    case uri_string:parse(RemoteUrl) of
+        #{host := Host, port := Port, path := Path, scheme := <<"http">>} ->
+            {ok, erlang:binary_to_list(Host), Port,
+                new_packet([Method, Path | FirstLineRest], RestHeader, Body)};
+        #{host := Host, path := Path, scheme := <<"http">>} ->
+            {ok, erlang:binary_to_list(Host), 443,
+                new_packet([Method, Path | FirstLineRest], RestHeader, Body)};
+        #{path := Port, scheme := Host} when Host /= <<"http">> ->
+            {ok, erlang:binary_to_list(Host), erlang:binary_to_integer(Port)};
+        Other ->
+            {error, {parse_remote_info_invalid, RemoteUrl, Other}}
+    end.
+
+new_packet(FirstLine, RestHeader, Body) ->
+    %% Proxy开头的header去掉
+    NewFirstLine = lists:join(<<" ">>, FirstLine),
+    NewHeader = lists:foldl(fun new_packet/2, <<>>, [
+        erlang:list_to_binary(NewFirstLine) | RestHeader
+    ]),
+    <<NewHeader/binary, "\r\n", Body/binary>>.
+
+new_packet(<<"Proxy", _/binary>>, Acc) ->
+    Acc;
+new_packet(Header, Acc) ->
+    <<Acc/binary, Header/binary, "\r\n">>.

@@ -30,3 +30,4 @@ apps/eproxy/src/eproxy.app.src.gen
 /priv/static/*
 GIT_COMMIT_IDS
 package_commit_id
+rebar.config.gen.eproxy
