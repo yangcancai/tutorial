@@ -26,7 +26,6 @@
 ]).
 
 -define(SERVER, ?MODULE).
-
 -record(eproxy_sessions_state, {
     socket, remote, step = handshake, buffer = <<>>, type = http, http_state
 }).
@@ -242,6 +241,7 @@ code_change(_OldVsn, State = #eproxy_sessions_state{}, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-compile({nowarn_unused_function, [{resp_concat, 1}]}).
 resp_concat(#http_state{
     resp_headers = Header, resp_status_line = {Ver, Status, Ok}, resp_payload = Payload
 }) ->
@@ -276,7 +276,7 @@ resp_concat(#http_state{
                 NewPayload/binary
             >>
     end.
-
+-compile({nowarn_unused_function, [{hook_payload, 3}]}).
 hook_payload(_, Header, Payload) ->
     ?LOG_DEBUG("~p", [Header]),
     case proplists:get_value(<<"content-encoding">>, Header) of
